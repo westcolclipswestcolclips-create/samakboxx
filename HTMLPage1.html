@@ -1,0 +1,466 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samak Box - APP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --gold: #FFD700;
+            --dark-bg: #050505;
+            --card-bg: rgba(20, 20, 20, 0.98);
+            --text: #FFFFFF;
+            --gray: #888;
+            --success: #00ff88;
+            --danger: #ff4444;
+        }
+
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--dark-bg); color: var(--text); margin: 0; padding-bottom: 80px; }
+        .hidden { display: none !important; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        .panel { background: var(--card-bg); border-radius: 25px; padding: 20px; border: 1px solid #222; margin-bottom: 20px; }
+
+        .header-atleta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .btn-nutri-top { background: #111; border: 1px solid #333; padding: 10px 15px; border-radius: 15px; color: #ff4444; font-weight: 900; font-size: 0.7rem; display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: uppercase; }
+        
+        .status-badge { font-size: 0.55rem; padding: 3px 8px; border-radius: 5px; font-weight: 900; margin-left: 5px; text-transform: uppercase; }
+        .status-badge.activo { background: var(--success); color: black; }
+        .status-badge.vencido { background: var(--danger); color: white; }
+        .status-badge.inactivo { background: #555; color: white; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,10,10,0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #222; z-index: 1000; backdrop-filter: blur(10px); }
+        .nav-item { color: var(--gray); font-size: 1.2rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .nav-item.active { color: var(--gold); }
+        .nav-item span { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; }
+
+        .tabs-header { display: flex; background: #111; border-radius: 15px; padding: 5px; margin-bottom: 15px; gap: 5px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; background: none; color: var(--gray); cursor: pointer; font-weight: 900; font-size: 0.6rem; text-transform: uppercase; }
+        .tab-btn.active { background: var(--gold); color: black; }
+        
+        .atleta-row { background: #000; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #333; position: relative; }
+        .atleta-row input { margin-bottom: 5px; font-size: 0.75rem; padding: 8px; background: #111; color: white; border: 1px solid #333; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        .info-label { font-size: 0.55rem; color: var(--gold); margin-bottom: 2px; display: block; text-transform: uppercase; font-weight: 900; }
+        
+        .status-toggle { position: absolute; top: 10px; right: 10px; border-radius: 8px; border: none; font-size: 0.5rem; font-weight: 900; padding: 5px 10px; cursor: pointer; text-transform: uppercase; }
+        .btn-activo { background: var(--success); color: black; }
+        .btn-inactivo { background: var(--danger); color: white; }
+        .btn-vencido { background: #ff8800; color: black; }
+
+        .rank-number { color: var(--gold); font-weight: 900; margin-right: 5px; }
+        .rank-item { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 8px 0; border-bottom: 1px solid #111; }
+
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--gold); font-weight: 900; font-size: 0.8rem; }
+        .attendance-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .day-box { aspect-ratio: 1/1; background: #111; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #444; border: 1px solid #222; }
+        .day-box.active { background: var(--success); color: black; font-weight: 900; border: none; }
+        .day-box.header { color: var(--gray); font-weight: 900; border: none; background: none; }
+
+        .btn-gold { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: 900; width: 100%; cursor: pointer; text-transform: uppercase; }
+        input, select, textarea { background: #111; color: white; border: 1px solid #333; padding: 12px; border-radius: 12px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        
+        .slider-wrapper { position: relative; width: 100%; margin-bottom: 20px; border-radius: 20px; overflow: hidden; height: 250px; border: 1px solid #222; }
+        .stories-container { display: flex; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); height: 100%; }
+        .story-card { min-width: 100%; height: 100%; cursor: zoom-in; }
+        .story-card img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .slider-nav { position: absolute; top: 50%; width: 100%; display: flex; justify-content: space-between; transform: translateY(-50%); padding: 0 10px; box-sizing: border-box; pointer-events: none; }
+        .nav-arrow { background: rgba(0,0,0,0.5); color: var(--gold); border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+
+        .modal-zoom { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:2000; display:flex; align-items:center; justify-content:center; }
+        .modal-zoom img { max-width: 95%; max-height: 90%; border-radius:10px; border: 2px solid var(--gold); }
+        .close-zoom { position: absolute; top: 20px; right: 20px; color: white; font-size: 2rem; cursor: pointer; }
+
+        .nutricion-box { border: 1px solid var(--gold); background: rgba(255, 215, 0, 0.05); padding: 15px; border-radius: 20px; margin-top: 10px; }
+        .attendance-counter { text-align: center; font-size: 0.7rem; font-weight: 900; color: var(--success); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .nutri-card { background: #111; padding: 15px; border-radius: 20px; margin-bottom: 15px; border-left: 5px solid var(--gold); }
+        
+        /* Estilos específicos para la gestión de fotos */
+        .ad-item-admin { position: relative; min-width: 80px; height: 80px; }
+        .ad-item-admin img { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 1px solid #444; }
+        .btn-del-ad { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="modalZoom" class="modal-zoom hidden" onclick="this.classList.add('hidden')">
+        <span class="close-zoom">&times;</span>
+        <img id="imgZoomed" src="">
+    </div>
+
+    <div id="p-login" class="container">
+        <div class="panel" style="margin-top: 50px; text-align: center;">
+            <h1 style="color:var(--gold); letter-spacing: 5px;">SAMAK</h1>
+            <input type="text" id="logUser" placeholder="Nombre Atleta">
+            <input type="password" id="logPass" placeholder="PIN">
+            <button class="btn-gold" onclick="login()">ENTRAR</button>
+            <p onclick="accesoDueno()" style="font-size: 0.7rem; color: var(--gray); margin-top: 20px; cursor: pointer;">ACCESO DUEÑO</p>
+        </div>
+    </div>
+
+    <div id="p-admin" class="container hidden">
+        <h2 style="color:var(--gold)">GESTIÓN DEL BOX</h2>
+        <div class="panel">
+            <h4>1. REGISTRAR SOCIO</h4>
+            <input type="text" id="admNom" placeholder="Nombre completo">
+            <input type="text" id="admIden" placeholder="N° Identificación">
+            <input type="text" id="admTel" placeholder="N° Teléfono">
+            <input type="text" id="admPin" placeholder="Asignar PIN">
+            <input type="text" id="admRango" placeholder="Rango">
+            <label class="info-label">Vencimiento:</label><input type="date" id="admFec">
+            <button class="btn-gold" onclick="addAtleta()">GUARDAR EN NUBE</button>
+        </div>
+        <div class="panel">
+            <h4>2. LISTA DE SOCIOS (ACTUALIZAR)</h4>
+            <input type="text" id="admBusca" placeholder="Buscar..." onkeyup="renderAtletas()">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="setTab('activos', this)">ACTIVOS</button>
+                <button class="tab-btn" onclick="setTab('vencidos', this)">VENCIDOS</button>
+                <button class="tab-btn" onclick="setTab('inactivos', this)">INACTIVOS</button>
+            </div>
+            <div id="listaAtletas" style="max-height: 500px; overflow-y: auto;"></div>
+        </div>
+        <div class="panel">
+            <h4>3. PUBLICAR WOD</h4>
+            <input type="text" id="admWodTit" placeholder="Título WOD">
+            <textarea id="admWodDesc" placeholder="Descripción..." rows="4"></textarea>
+            <button class="btn-gold" onclick="saveWod()">PUBLICAR WOD</button>
+        </div>
+        <div class="panel">
+            <h4>4. CARTELERA (FOTOS)</h4>
+            <input type="file" id="admImgFile" accept="image/*" style="display:none" onchange="uploadAdFile(this)">
+            <button class="btn-gold" style="background:#fff; color:#000;" onclick="document.getElementById('admImgFile').click()">
+                <i class="fas fa-image"></i> SELECCIONAR DE GALERÍA
+            </button>
+            <div id="listaAnuncios" style="margin-top:15px; display:flex; gap:15px; overflow-x:auto; padding-bottom: 10px;"></div>
+        </div>
+        <button class="btn-gold" style="background:#222; color:white" onclick="location.reload()">SALIR</button>
+    </div>
+
+    <div id="p-atleta-main" class="container hidden">
+        <div class="header-atleta">
+            <div id="daysLeft" style="font-size:0.7rem; color:var(--gray); font-weight: 900;"></div>
+            <div class="btn-nutri-top" onclick="showSeccion('p-nutricion-page')">
+                <i class="fas fa-apple-alt"></i> NUTRICIÓN
+            </div>
+        </div>
+        <h3 style="margin-bottom:15px;">
+            <span id="nomDisplay"></span> 
+            <span id="rankDisplay" style="font-size:0.6rem; background:var(--gold); color:black; padding:2px 5px; border-radius:5px;"></span>
+            <span id="subStatusBadge" class="status-badge"></span>
+        </h3>
+        <div class="slider-wrapper">
+            <div class="stories-container" id="adContainer"></div>
+            <div class="slider-nav">
+                <button class="nav-arrow" onclick="moveSlider(-1)"><i class="fas fa-chevron-left"></i></button>
+                <button class="nav-arrow" onclick="moveSlider(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <div id="countAsistencias" class="attendance-counter">0 ATLETAS CONFIRMARON ASISTENCIA</div>
+            <button class="btn-gold" onclick="doCheckIn()">CONFIRMAR ASISTENCIA</button>
+        </div>
+        <div class="panel">
+            <h2 id="wodTitDisplay" style="color:var(--gold); margin:0;"></h2>
+            <p id="wodDescDisplay" style="white-space:pre-wrap;"></p>
+        </div>
+    </div>
+
+    <div id="p-nutricion-page" class="container hidden">
+        <div style="display:flex; align-items:center; gap:15px; margin-bottom:20px;">
+            <button class="nav-arrow" style="pointer-events: auto; position:static; transform:none;" onclick="showSeccion('p-atleta-main')"><i class="fas fa-arrow-left"></i></button>
+            <h2 style="color:#ff4444; margin:0;"><i class="fas fa-apple-alt"></i> GUÍA DE NUTRICIÓN</h2>
+        </div>
+        <div class="nutri-card">
+            <h4 style="color:var(--gold); margin:0 0 10px 0;">¿QUIERES SUBIR DE PESO / MASA?</h4>
+            <p style="font-size:0.8rem; line-height:1.4; color:#ccc;">Aumenta tu ingesta de carbohidratos complejos (avena, arroz, papa) y mantén la proteína alta (pollo, huevos, carne). <b>Come esto:</b> Un excedente calórico de 300-500 kcal diarias.</p>
+        </div>
+        <div class="nutri-card" style="border-left-color: var(--success);">
+            <h4 style="color:var(--success); margin:0 0 10px 0;">¿QUIERES RENDIR MÁS EN EL WOD?</h4>
+            <p style="font-size:0.8rem; line-height:1.4; color:#ccc;">Prioriza la hidratación con electrolitos y carbohidratos de absorción rápida 30 min antes de entrenar (fruta o miel). <b>Come esto:</b> Banano o dátiles antes del WOD para energía explosiva.</p>
+        </div>
+        <div class="nutri-card" style="border-left-color: #44aaff;">
+            <h4 style="color:#44aaff; margin:0 0 10px 0;">¿QUIERES PERDER GRASA?</h4>
+            <p style="font-size:0.8rem; line-height:1.4; color:#ccc;">Enfócate en un déficit calórico controlado y aumenta el consumo de vegetales verdes y fibra para sentir saciedad. <b>Come esto:</b> Proteína magra y muchos vegetales en cada plato.</p>
+        </div>
+    </div>
+
+    <div id="p-atleta-ranking" class="container hidden">
+        <h2 style="color:var(--gold)">RANKING HOY</h2>
+        <div class="panel">
+            <h4>SUBIR MI MARCA</h4>
+            <div style="display:flex; gap:5px;"><select id="resMin"></select><select id="resSeg"></select></div>
+            <select id="resLvl" style="margin-top:10px;">
+                <option value="RX">RX</option>
+                <option value="Avanzado">AVANZADO</option>
+                <option value="Intermedio">INTERMEDIO</option>
+                <option value="Principiante">PRINCIPIANTE</option>
+                <option value="Baby">BABY</option>
+            </select>
+            <button class="btn-gold" onclick="saveScore()">PUBLICAR TIEMPO</button>
+        </div>
+        <div id="rankings-container" style="max-height: 500px; overflow-y: auto;">
+            <div class="panel"><h4>TOP 10 RX</h4><div id="lb-RX"></div></div>
+            <div class="panel"><h4>TOP 10 AVANZADO</h4><div id="lb-Avanzado"></div></div>
+            <div class="panel"><h4>TOP 10 INTERMEDIO</h4><div id="lb-Intermedio"></div></div>
+            <div class="panel"><h4>TOP 10 PRINCIPIANTE</h4><div id="lb-Principiante"></div></div>
+            <div class="panel"><h4>TOP 10 BABY</h4><div id="lb-Baby"></div></div>
+        </div>
+    </div>
+
+    <div id="p-atleta-perfil" class="container hidden">
+        <h2 style="color:var(--gold)">MI PERFIL</h2>
+        <div class="panel" style="text-align: center;">
+            <h3 id="perfNom" style="margin:0; text-transform: uppercase;"></h3>
+            <p id="totalGymDays" style="color:var(--gold); font-weight:900; font-size:0.8rem; margin:10px 0;"></p>
+        </div>
+        <div class="panel">
+            <div class="calendar-header">
+                <span onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></span>
+                <span id="monthDisplay"></span>
+                <span onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></span>
+            </div>
+            <div class="attendance-grid" id="attendanceGrid"></div>
+        </div>
+        <div class="panel"><h4>HISTORIAL DE MARCAS</h4><div id="misTiempos"></div></div>
+    </div>
+
+    <div id="main-nav" class="bottom-nav hidden">
+        <div class="nav-item" onclick="showSeccion('p-atleta-main', this)"><i class="fas fa-dumbbell"></i><span>WOD</span></div>
+        <div class="nav-item" onclick="showSeccion('p-atleta-ranking', this)"><i class="fas fa-trophy"></i><span>TOP</span></div>
+        <div class="nav-item active" onclick="showSeccion('p-atleta-perfil', this)"><i class="fas fa-user-circle"></i><span>PERFIL</span></div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhRLIB1xLkw0PdMUHCU6lwzehduz3sRbI",
+            authDomain: "samakbox-7a002.firebaseapp.com",
+            databaseURL: "https://samakbox-7a002-default-rtdb.firebaseio.com",
+            projectId: "samakbox-7a002",
+            storageBucket: "samakbox-7a002.firebasestorage.app",
+            messagingSenderId: "553305772825",
+            appId: "1:553305772825:web:9eb389f5ac44fb119eab88"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // VARIABLES GLOBALES
+        let atletas = [];
+        let scores = [];
+        let asistencia = [];
+        let ads = [];
+        let wodData = {titulo:"CARGANDO...", desc:"..."};
+        let userLog = null;
+        let tabActual = 'activos';
+        let currentCalDate = new Date();
+        let slideIndex = 0;
+        let sliderTimer = null;
+
+        // CARGA TIEMPO REAL
+        db.ref('atletas').on('value', snap => { 
+            const data = snap.val();
+            atletas = data ? Object.values(data) : []; 
+            if(window.p_admin_visible) renderAtletas(); 
+        });
+        db.ref('scores').on('value', snap => { scores = snap.val() ? Object.values(snap.val()) : []; if(userLog) renderLBs(); });
+        db.ref('asistencia').on('value', snap => { asistencia = snap.val() ? Object.values(snap.val()) : []; updateAttendanceCount(); });
+        db.ref('ads').on('value', snap => { 
+            const data = snap.val();
+            ads = data ? Object.entries(data).map(([key, val]) => ({key, ...val})) : []; 
+            renderAds(); 
+            if(window.p_admin_visible) renderAdsList(); 
+        });
+        db.ref('wod').on('value', snap => { 
+            wodData = snap.val() || {titulo:"SIN WOD", desc:"..."}; 
+            document.getElementById('wodTitDisplay').innerText = wodData.titulo;
+            document.getElementById('wodDescDisplay').innerText = wodData.desc;
+        });
+
+        for(let i=0; i<61; i++) {
+            document.getElementById('resMin').innerHTML += `<option value="${i}">${i} min</option>`;
+            document.getElementById('resSeg').innerHTML += `<option value="${i}">${i < 10 ? '0'+i : i} seg</option>`;
+        }
+
+        function login() {
+            const n = document.getElementById('logUser').value.trim().toLowerCase();
+            const p = document.getElementById('logPass').value;
+            const a = atletas.find(x => x.nombre.toLowerCase() === n && x.pin === p);
+            if(a) {
+                userLog = a; showSeccion('p-atleta-main');
+                document.getElementById('main-nav').classList.remove('hidden');
+                document.getElementById('nomDisplay').innerText = a.nombre.toUpperCase();
+                document.getElementById('rankDisplay').innerText = a.rango;
+                checkUserStatus(a);
+            } else { alert("Datos incorrectos"); }
+        }
+
+        function showSeccion(id, btn) {
+            document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            window.p_admin_visible = (id === 'p-admin');
+            if(btn) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); btn.classList.add('active'); }
+            if(id === 'p-atleta-perfil') renderPerfil();
+            if(id === 'p-atleta-ranking') renderLBs();
+            if(id === 'p-atleta-main') startSlider(); else stopSlider();
+        }
+
+        function updateAttendanceCount() {
+            const hoy = new Date().toLocaleDateString();
+            const totalHoy = asistencia.filter(a => a.fecha === hoy).length;
+            const el = document.getElementById('countAsistencias');
+            if(el) el.innerText = `${totalHoy} ATLETAS CONFIRMARON ASISTENCIA`;
+        }
+
+        // SLIDER ANUNCIOS
+        function renderAds() {
+            const cont = document.getElementById('adContainer');
+            if(ads.length === 0) { cont.innerHTML = `<div class="story-card"><img src="https://via.placeholder.com/500x250?text=SIN+ANUNCIOS"></div>`; return; }
+            cont.innerHTML = ads.map(a => `<div class="story-card" onclick="openZoom('${a.url}')"><img src="${a.url}"></div>`).join('');
+            slideIndex = 0;
+            cont.style.transform = `translateX(0%)`;
+            startSlider();
+        }
+        function moveSlider(step) { if(ads.length <= 1) return; slideIndex = (slideIndex + step + ads.length) % ads.length; document.getElementById('adContainer').style.transform = `translateX(-${slideIndex * 100}%)`; resetSliderTimer(); }
+        function startSlider() { stopSlider(); if(ads.length > 1) sliderTimer = setInterval(() => moveSlider(1), 3000); }
+        function stopSlider() { clearInterval(sliderTimer); }
+        function resetSliderTimer() { stopSlider(); startSlider(); }
+        function openZoom(url) { document.getElementById('imgZoomed').src = url; document.getElementById('modalZoom').classList.remove('hidden'); }
+
+        // FUNCIONES ADMIN
+        function accesoDueno() { if(prompt("PIN:") === "1234") { showSeccion('p-admin'); renderAtletas(); renderAdsList(); } }
+        function setTab(t, btn) { tabActual = t; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderAtletas(); }
+        
+        function addAtleta() {
+            const id = Date.now();
+            const nuevo = { id: id, nombre: document.getElementById('admNom').value, identificacion: document.getElementById('admIden').value, telefono: document.getElementById('admTel').value, pin: document.getElementById('admPin').value, rango: document.getElementById('admRango').value, vencimiento: document.getElementById('admFec').value, estado: 'activo' };
+            db.ref('atletas/' + id).set(nuevo); alert("Atleta guardado");
+        }
+
+        function renderAtletas() {
+            const cont = document.getElementById('listaAtletas');
+            const bus = document.getElementById('admBusca').value.toLowerCase();
+            const hoy = new Date().toISOString().split('T')[0];
+            const filtrados = atletas.filter(a => {
+                const c = a.nombre.toLowerCase().includes(bus) || a.identificacion.includes(bus);
+                if (tabActual === 'inactivos') return c && a.estado === 'inactivo';
+                if (tabActual === 'activos') return c && a.estado !== 'inactivo' && a.vencimiento >= hoy;
+                if (tabActual === 'vencidos') return c && a.estado !== 'inactivo' && a.vencimiento < hoy;
+            });
+            cont.innerHTML = filtrados.map(a => {
+                let text = "ACTIVO"; let cls = "btn-activo";
+                if(tabActual === 'vencidos') { text = "VENCIDO"; cls = "btn-vencido"; }
+                if(tabActual === 'inactivos') { text = "INACTIVO"; cls = "btn-inactivo"; }
+                return `<div class="atleta-row">
+                    <button class="status-toggle ${cls}" onclick="toggleEstado(${a.id})">${text}</button>
+                    <span class="info-label">Nombre Atleta</span><input type="text" value="${a.nombre}" onchange="updateA(${a.id}, 'nombre', this.value)">
+                    <div style="display:flex; gap:5px;">
+                        <div style="flex:1;"><span class="info-label">ID</span><input type="text" value="${a.identificacion}" onchange="updateA(${a.id}, 'identificacion', this.value)"></div>
+                        <div style="flex:1;"><span class="info-label">Tel</span><input type="text" value="${a.telefono}" onchange="updateA(${a.id}, 'telefono', this.value)"></div>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <div style="flex:1;"><span class="info-label">PIN</span><input type="text" value="${a.pin}" onchange="updateA(${a.id}, 'pin', this.value)"></div>
+                        <div style="flex:1;"><span class="info-label">Rango</span><input type="text" value="${a.rango}" onchange="updateA(${a.id}, 'rango', this.value)"></div>
+                        <div style="flex:1;"><span class="info-label">Vencimiento</span><input type="date" value="${a.vencimiento}" onchange="updateA(${a.id}, 'vencimiento', this.value)"></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function toggleEstado(id) {
+            const a = atletas.find(x => x.id === id);
+            db.ref('atletas/' + id).update({estado: a.estado === 'activo' ? 'inactivo' : 'activo'});
+        }
+        function updateA(id, campo, valor) { let d = {}; d[campo] = valor; db.ref('atletas/' + id).update(d); }
+        function saveWod() { db.ref('wod').set({titulo: document.getElementById('admWodTit').value, desc: document.getElementById('admWodDesc').value}); alert("WOD Publicado"); }
+
+        // GESTIÓN DE FOTOS MEJORADA
+        function uploadAdFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const id = Date.now();
+                db.ref('ads/' + id).set({ url: e.target.result });
+                input.value = ""; // Limpiar input
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeAd(key) {
+            if(confirm("¿Eliminar esta foto de la cartelera?")) {
+                db.ref('ads/' + key).remove();
+            }
+        }
+
+        function renderAdsList() {
+            const cont = document.getElementById('listaAnuncios');
+            cont.innerHTML = ads.map(a => `
+                <div class="ad-item-admin">
+                    <img src="${a.url}">
+                    <button class="btn-del-ad" onclick="removeAd('${a.key}')"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // ACCIONES ATLETA
+        function doCheckIn() {
+            const hoy = new Date().toLocaleDateString();
+            if(asistencia.some(a => a.id === userLog.id && a.fecha === hoy)) return alert("Ya registrado hoy");
+            db.ref('asistencia/' + userLog.id + "_" + Date.now()).set({id: userLog.id, fecha: hoy});
+            confetti();
+        }
+        function saveScore() {
+            const hoy = new Date().toLocaleDateString();
+            if(scores.some(s => s.atletaId === userLog.id && s.fecha === hoy)) return alert("Ya subiste marca hoy");
+            db.ref('scores/' + userLog.id + "_" + Date.now()).set({ atletaId: userLog.id, nombre: userLog.nombre, lvl: document.getElementById('resLvl').value, total: (parseInt(document.getElementById('resMin').value)*60)+parseInt(document.getElementById('resSeg').value), tiempo: `${document.getElementById('resMin').value}:${document.getElementById('resSeg').value}`, fecha: hoy });
+            alert("Tiempo guardado");
+        }
+        function renderLBs() {
+            const hoy = new Date().toLocaleDateString();
+            ['RX', 'Avanzado', 'Intermedio', 'Principiante', 'Baby'].forEach(lvl => {
+                const res = scores.filter(s => s.lvl === lvl && s.fecha === hoy).sort((a,b) => a.total - b.total).slice(0,10);
+                document.getElementById(`lb-${lvl}`).innerHTML = res.map((s,i) => `<div class="rank-item"><span><span class="rank-number">#${i+1}</span> ${s.nombre}</span><b>${s.tiempo}</b></div>`).join('') || 'Sin marcas hoy';
+            });
+        }
+        function renderPerfil() {
+            document.getElementById('perfNom').innerText = userLog.nombre; renderCalendar();
+            const misT = scores.filter(s => s.atletaId === userLog.id).reverse();
+            document.getElementById('misTiempos').innerHTML = misT.map(s => `<div style="font-size:0.7rem; padding:10px; border-bottom:1px solid #111; display:flex; justify-content:space-between;"><span>${s.fecha}</span><b>${s.tiempo} (${s.lvl})</b></div>`).join('');
+        }
+        function renderCalendar() {
+            const grid = document.getElementById('attendanceGrid');
+            const mNames = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+            document.getElementById('monthDisplay').innerText = `${mNames[currentCalDate.getMonth()]} ${currentCalDate.getFullYear()}`;
+            grid.innerHTML = "";
+            ['L','M','X','J','V','S','D'].forEach(d => grid.innerHTML += `<div class="day-box header">${d}</div>`);
+            let f = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth(), 1).getDay();
+            f = (f === 0) ? 6 : f - 1;
+            for(let i=0; i<f; i++) grid.innerHTML += `<div></div>`;
+            const asis = asistencia.filter(a => a.id === userLog.id).map(a => a.fecha);
+            const days = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth()+1, 0).getDate();
+            for(let d=1; d<=days; d++) {
+                const dateStr = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth(), d).toLocaleDateString();
+                grid.innerHTML += `<div class="day-box ${asis.includes(dateStr)?'active':''}">${d}</div>`;
+            }
+        }
+        function changeMonth(s) { currentCalDate.setMonth(currentCalDate.getMonth()+s); renderCalendar(); }
+        function checkUserStatus(a) {
+            const hoy = new Date().toISOString().split('T')[0];
+            const d = Math.ceil((new Date(a.vencimiento) - new Date()) / (1000 * 60 * 60 * 24));
+            document.getElementById('daysLeft').innerText = d > 0 ? `${d} DÍAS RESTANTES` : "SUSCRIPCIÓN VENCIDA";
+            const b = document.getElementById('subStatusBadge');
+            if (a.estado === 'inactivo') { b.innerText = "INACTIVO"; b.className = "status-badge inactivo"; }
+            else if (a.vencimiento < hoy) { b.innerText = "VENCIDO"; b.className = "status-badge vencido"; }
+            else { b.innerText = "ACTIVO"; b.className = "status-badge activo"; }
+        }
+    </script>
+</body>
+</html>
